@@ -9,6 +9,6 @@ public class Main {
     public static void main(String[] args) {
         String betsApiFootballUrl = rb.getString("betsapi.site.football.url");
         dataFetcher.getEventsResultsData(betsApiFootballUrl);
-        System.out.println("Hello Bookie!");
+        System.out.println("Finished Bookie!");
     }
 }

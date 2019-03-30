@@ -1,0 +1,36 @@
+package model;
+
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.hibernate.cfg.Configuration;
+
+import javax.persistence.PersistenceException;
+
+public class SportEventRepository {
+
+    private Session session;
+
+    public SportEventRepository() {
+        createSession();
+    }
+
+    private void createSession() {
+        Configuration config = new Configuration();
+        config.configure("hibernate.cfg.xml");
+        session = config.buildSessionFactory().openSession();
+    }
+
+    public void saveSportEvents(SportEvent se) {
+        Transaction t = session.beginTransaction();
+        try {
+            session.persist(se);
+        } catch (PersistenceException pe) {
+            //do nothing, it's duplicated
+        }
+        t.commit();
+    }
+
+    //        // Query - To fetch all employees.
+//        List<SportEvent> list = s.getNamedQuery("findSportEvents").getResultList();
+
+}
