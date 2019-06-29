@@ -2,6 +2,7 @@ package model;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 import javax.persistence.*;
 import java.util.Date;
@@ -11,6 +12,7 @@ import java.util.Date;
 @NamedQuery(name = "findSportEvents", query = "from model.SportEvent se")
 @Getter
 @Setter
+@ToString
 public class SportEvent {
 
     @Id

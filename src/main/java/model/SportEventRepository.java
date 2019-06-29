@@ -1,11 +1,13 @@
 package model;
 
+import lombok.extern.log4j.Log4j2;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.cfg.Configuration;
 
 import javax.persistence.PersistenceException;
 
+@Log4j2
 public class SportEventRepository {
 
     private Session session;
@@ -26,6 +28,9 @@ public class SportEventRepository {
             session.persist(se);
         } catch (PersistenceException pe) {
             //do nothing, it's duplicated
+            log.warn("Duplicate: " + se.toString());
+        } catch (Exception e) {
+            log.error(e);
         }
         t.commit();
     }
