@@ -19,7 +19,7 @@ public class SportEventRepository {
     private void createSession() {
         Configuration config = new Configuration();
         config.configure("hibernate.cfg.xml");
-        session = config.buildSessionFactory().openSession();
+        session = config.buildSessionFactory().openSession(); //TODO session close?
     }
 
     public void saveSportEvents(SportEvent se) {

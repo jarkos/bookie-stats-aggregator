@@ -7,12 +7,16 @@
         <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/bookie_stats_db?serverTimezone=UTC</property>
         <property name="hibernate.connection.username">root</property>
         <property name="hibernate.connection.password" />
+        <property name="hibernate.connection.CharSet">utf8</property>
+        <property name="hibernate.connection.characterEncoding">utf8</property>
+        <property name="hibernate.connection.useUnicode">true</property>
 
         <!-- Automatic creation or validation of DDL schema -->
-        <property name="hibernate.hbm2ddl.auto">validate</property>
+        <property name="hibernate.hbm2ddl.auto">update</property>
         <!-- Sql dialect -->
         <property name="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</property>
         <!-- Model class -->
         <mapping class="model.SportEvent" />
+        <mapping class="model.Odds" />
     </session-factory>
 </hibernate-configuration>

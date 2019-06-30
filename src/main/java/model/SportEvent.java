@@ -16,17 +16,16 @@ import java.util.Date;
 public class SportEvent {
 
     @Id
-    @GeneratedValue(strategy= GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
-    private int flashScoreEventId;
+    private String flashScoreEventId;
     private String league;
     private Date date;
     private String firstTeam;
     private String secondTeam;
     private int firstTeamResult;
     private int secondTeamResult;
-    private double bookieA_odds;
-    private double bookieB_odds;
-    private double bookieC_odds;
-    private double bookieD_odds;
+    @OneToOne(fetch = FetchType.LAZY, cascade = {CascadeType.ALL})
+    @JoinColumn(name = "odds_id")
+    private Odds odds;
 }

@@ -1,12 +1,12 @@
 import model.ClickAction;
+import model.Odds;
 import model.SportEvent;
 import model.SportEventRepository;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.Instant;
+import java.util.*;
 import java.util.stream.Collectors;
 
 class DataFetcher {
@@ -14,70 +14,76 @@ class DataFetcher {
     private SportEventRepository sportEventRepository = new SportEventRepository();
 
     void getEventsResultsData(String url) {
-        List<SportEvent> allEvents = new ArrayList<>();
         try {
-            getEventsResults(url);
+            Set<SportEvent> allEvents = getEventsResults(url);
+            allEvents.forEach(se -> sportEventRepository.saveSportEvents(se));
         } catch (NumberFormatException nmb) {
             Main.logger.info("NumberFormatException happened");
             nmb.printStackTrace();
         }
-        allEvents.forEach(se -> sportEventRepository.saveSportEvents(se));
     }
 
-    private void getEventsResults(String url) {
+    private Set<SportEvent> getEventsResults(String url) {
         String pageContent = RenderPageUtils.renderFullPage(url, ClickAction.TOMORROW);
         Document mainPageYesterday = Jsoup.parse(pageContent);
-        var matchesIds = mainPageYesterday.getElementsByClass("event__match event__match--oneLine")
-                .stream().map(r -> r.attributes().get("id").substring(4)).collect(Collectors.toSet());
-        var yesterdayMatchesInfo = matchesIds.stream().map(id -> RenderPageUtils.renderFullPage(Main.rb.getString("website.results.football.odds.url")
-                .replace("ID_HOLDER", id), ClickAction.NONE)).collect(Collectors.toSet());
-        var yesterdayMatchesDocuments = yesterdayMatchesInfo.stream().map(Jsoup::parse).collect(Collectors.toSet());
-        System.out.println("XD");
-
-        yesterdayMatchesDocuments.forEach(this::fillEvent);
-//        Elements eventsRows = resultTable.getElementsByTag("tr");
-//        eventsRows.forEach(event -> {
-//            Elements columns = event.getElementsByTag("td");
-//            String[] teams = splitTeamNames(columns.get(2).text());
-//            String[] results = splitEventResult(columns.get(4).text());
-//            SportEvent se = fillEvent(columns, teams, results);
-//            allEvents.add(se);
-//        });
+        List<String> matchesIds = mainPageYesterday.getElementsByClass("event__match event__match--oneLine")
+                .stream().map(r -> r.attributes().get("id").substring(4)).collect(Collectors.toList()).subList(0, 3);
+        HashMap<String, Document> yesterdayMatchesInfoMap = new HashMap<>();
+        matchesIds.forEach(id ->
+                yesterdayMatchesInfoMap.put(id, Jsoup.parse(RenderPageUtils.renderFullPage(Main.rb.getString("website.results.football.odds.url")
+                        .replace("ID_HOLDER", id), ClickAction.NONE)))
+        );
+        Set<SportEvent> sportEvents = new HashSet<>();
+        yesterdayMatchesInfoMap.forEach((k, v) -> sportEvents.add(fillEvent(k, v)));
+        return sportEvents.stream().filter(e -> e.getOdds() != null).collect(Collectors.toSet());
     }
 
-    private SportEvent fillEvent(Document match) {
+    private SportEvent fillEvent(String id, Document match) {
         SportEvent se = new SportEvent();
-//        se.setLeague(columns.get(0).text());
-//        DateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-//        try {
-//            Date date = format.parse(columns.get(1).attributes().get("data-dt"));
-//            se.setDate(date);
-//        } catch (ParseException e) {
-//            Main.logger.info("ParseException happened");
-//            e.printStackTrace();
-//        }
-//        se.setFirstTeam(teams[0]);
-//        se.setSecondTeam(teams[1]);
-//        se.setFirstTeamResult(Integer.parseInt(results[0]));
-//        se.setSecondTeamResult(Integer.parseInt(results[1]));
+        String league = match.childNode(0).childNode(0).childNodes().stream().filter(e -> e.attr("property")
+                .equals("og:description")).findFirst().get().attr("content"); //TODO get without check
+        String[] title = match.childNode(0).childNode(0).childNodes().stream().filter(e -> e.attr("property")
+                .equals("og:title")).findFirst().get().attr("content").split(" "); //TODO get without check
+        String[] result = title[3].split(":");
+
+        var timeStamp = match.childNode(0).childNode(0).childNodes().get(76).childNode(0).toString()
+                .split("var game_utime")[1].substring(3, 13);
+        se.setFlashScoreEventId(id);
+        se.setLeague(league);
+        Date date = Date.from(Instant.ofEpochSecond(Long.parseLong(timeStamp)));
+        se.setDate(date);
+        se.setFirstTeam(title[0]);
+        se.setSecondTeam(title[2]);
+        se.setFirstTeamResult(Integer.parseInt(result[0]));
+        se.setSecondTeamResult(Integer.parseInt(result[1]));
+        Odds o = fetchOdds(match);
+        se.setOdds(o);
         return se;
     }
 
-    private Double getOdds(String oddsUrl) {
-        Document doc = null;
-        try {
-            doc = Jsoup.connect(oddsUrl).get();
-        } catch (IOException e) {
-            Main.logger.info("IOException happened for odds fetch");
-            e.printStackTrace();
-        }
-        assert doc != null;
-//        Element resultTable = doc.getElementsByClass("row").first();
-//        Element resultTable2 = doc.getElementsByClass("table table-sm table-bordered").first();
-//        if (resultTable != null) {
-//
-//        }
-        return null;
+    private Odds fetchOdds(Document match) {
+        HashMap<String, List<String>> oddsMap = new HashMap<>();
+        match.getElementById("block-1x2-ft").getElementsByClass("kx").forEach(element -> oddsMap
+                .computeIfAbsent(element.attributes().get("onclick").split("ft_")[1].substring(0, 1), k -> new ArrayList<>()).add(element.text()));
+        Odds o = new Odds();
+        oddsMap.forEach((k, v) -> {
+            if (k.equals("0")) {
+                o.setBookieA_0_odds(Double.parseDouble(v.get(0)));
+                o.setBookieB_0_odds(Double.parseDouble(v.get(1)));
+                o.setBookieC_0_odds(Double.parseDouble(v.get(2)));
+                o.setBookieD_0_odds(Double.parseDouble(v.get(3)));
+            } else if (k.equals("1")) {
+                o.setBookieA_1_odds(Double.parseDouble(v.get(0)));
+                o.setBookieB_1_odds(Double.parseDouble(v.get(1)));
+                o.setBookieC_1_odds(Double.parseDouble(v.get(2)));
+                o.setBookieD_1_odds(Double.parseDouble(v.get(3)));
+            } else {
+                o.setBookieA_2_odds(Double.parseDouble(v.get(0)));
+                o.setBookieB_2_odds(Double.parseDouble(v.get(1)));
+                o.setBookieC_2_odds(Double.parseDouble(v.get(2)));
+                o.setBookieD_2_odds(Double.parseDouble(v.get(3)));
+            }
+        });
+        return o;
     }
-
 }

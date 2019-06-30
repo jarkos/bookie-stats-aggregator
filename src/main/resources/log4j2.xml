@@ -10,7 +10,7 @@
                 </pattern>>
             </PatternLayout>
         </Console>
-        <File name="File-Appender" fileName="hibernate.log" bufferedIO="false" advertiseURI="file://logs/hibernate.log"
+        <File name="File-Appender" fileName="hibernate.log" bufferedIO="false" advertiseURI="file://hibernate.log"
               advertise="true">
         </File>
     </Appenders>

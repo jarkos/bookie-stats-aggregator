@@ -18,7 +18,7 @@ class RenderPageUtils {
             driver.findElement(By.className(action.value)).click();
             waitJsRendering(driver);
             try {
-                Thread.sleep(8000); //lame TODO
+                Thread.sleep(5000); //lame TODO
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
