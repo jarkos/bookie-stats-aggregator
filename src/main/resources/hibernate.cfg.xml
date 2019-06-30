@@ -11,7 +11,7 @@
         <!-- Automatic creation or validation of DDL schema -->
         <property name="hibernate.hbm2ddl.auto">validate</property>
         <!-- Sql dialect -->
-        <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</property>
         <!-- Model class -->
         <mapping class="model.SportEvent" />
     </session-factory>
