@@ -9,6 +9,8 @@ import java.time.Duration;
 
 class RenderPageUtils {
 
+    public static final String ODDS = "Kursy";
+
     static String renderFullPage(String url, ClickAction action) {
         System.setProperty("webdriver.chrome.driver", "/Repos/BookieStatsAgregator/src/main/resources/libs/chromedriver.exe");
         WebDriver driver = new ChromeDriver();
@@ -16,12 +18,18 @@ class RenderPageUtils {
         waitJsRendering(driver);
         if (action != ClickAction.NONE) {
             driver.findElement(By.className(action.value)).click();
-            waitJsRendering(driver);
             try {
-                Thread.sleep(5000); //lame TODO
+                Thread.sleep(2000);
+                driver.findElement(By.linkText(ODDS)).click();
+                waitJsRendering(driver);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+        }
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
         String content = driver.getPageSource();
         driver.close();

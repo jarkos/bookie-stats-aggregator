@@ -35,7 +35,9 @@ public class SportEventRepository {
         t.commit();
     }
 
-    //        // Query - To fetch all employees.
-//        List<SportEvent> list = s.getNamedQuery("findSportEvents").getResultList();
+    public boolean checkEventExist(String id) {
+        var query = session.createQuery("from SportEvent WHERE flashScoreEventId = :id").setParameter("id", id);
+        return query.list().size() > 0;
+    }
 
 }
