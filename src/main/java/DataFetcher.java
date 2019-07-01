@@ -7,6 +7,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
@@ -57,16 +60,19 @@ class DataFetcher {
         SportEvent se = new SportEvent();
         String league = match.childNode(0).childNode(0).childNodes().stream().filter(e -> e.attr("property")
                 .equals("og:description")).findFirst().get().attr("content"); //TODO get without check
-        match.getElementById("block-current-result-ft");
+        match.getElementById("utime");
         Date date = null;
-        if (StringUtils.isNotBlank(match.childNode(0).childNode(0).childNodes().get(76).toString())) {
-            var timeStamp = match.childNode(0).childNode(0).childNodes().get(76).childNode(0).toString()
-                    .split("var game_utime")[1].substring(3, 13);
-            date = Date.from(Instant.ofEpochSecond(Long.parseLong(timeStamp)));
+        if (StringUtils.isNotBlank(match.getElementById("utime").text())) {
+            DateFormat format = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+            try {
+                date = format.parse(match.getElementById("utime").text().replace(".", "-"));
+            } catch (ParseException e) {
+                log.error("ParseException happened, id: " + id);
+            }
         } else {
             Instant instant = Instant.now();
             long timeStampMillis = instant.toEpochMilli();
-            Date.from(Instant.ofEpochSecond(timeStampMillis));
+            date = Date.from(Instant.ofEpochSecond(timeStampMillis));
         }
         se.setFlashScoreEventId(id);
         se.setLeague(league);
@@ -92,46 +98,49 @@ class DataFetcher {
     }
 
     private Odds fetchOdds(Document match) {
-        HashMap<String, List<String>> oddsMap = new HashMap<>();
-        match.getElementById("block-1x2-ft").getElementsByClass("kx").forEach(element -> oddsMap
-                .computeIfAbsent(element.attributes().get("onclick").split("ft_")[1].substring(0, 1), k -> new ArrayList<>()).add(element.text()));
         Odds o = new Odds();
-        oddsMap.forEach((k, v) -> {
-            if (k.equals("0")) {
-                o.setBookieA_0_odds(parseToDouble(v.get(0)));
-                if (v.size() > 1) {
-                    o.setBookieB_0_odds(parseToDouble(v.get(1)));
+        HashMap<String, List<String>> oddsMap = new HashMap<>();
+        if (match.getElementById("block-1x2-ft") != null) {
+            match.getElementById("block-1x2-ft").getElementsByClass("kx").forEach(element -> oddsMap
+                    .computeIfAbsent(element.attributes().get("onclick").split("ft_")[1].substring(0, 1), k -> new ArrayList<>()).add(element.text()));
+
+            oddsMap.forEach((k, v) -> {
+                if (k.equals("0")) {
+                    o.setBookieA_0_odds(parseToDouble(v.get(0)));
+                    if (v.size() > 1) {
+                        o.setBookieB_0_odds(parseToDouble(v.get(1)));
+                    }
+                    if (v.size() > 2) {
+                        o.setBookieC_0_odds(parseToDouble(v.get(2)));
+                    }
+                    if (v.size() > 3) {
+                        o.setBookieD_0_odds(parseToDouble(v.get(3)));
+                    }
+                } else if (k.equals("1")) {
+                    o.setBookieA_1_odds(parseToDouble(v.get(0)));
+                    if (v.size() > 1) {
+                        o.setBookieB_1_odds(parseToDouble(v.get(1)));
+                    }
+                    if (v.size() > 2) {
+                        o.setBookieC_1_odds(parseToDouble(v.get(2)));
+                    }
+                    if (v.size() > 3) {
+                        o.setBookieD_1_odds(parseToDouble(v.get(3)));
+                    }
+                } else {
+                    o.setBookieA_2_odds(parseToDouble(v.get(0)));
+                    if (v.size() > 1) {
+                        o.setBookieB_2_odds(parseToDouble(v.get(1)));
+                    }
+                    if (v.size() > 2) {
+                        o.setBookieC_2_odds(parseToDouble(v.get(2)));
+                    }
+                    if (v.size() > 3) {
+                        o.setBookieD_2_odds(parseToDouble(v.get(3)));
+                    }
                 }
-                if (v.size() > 2) {
-                    o.setBookieC_0_odds(parseToDouble(v.get(2)));
-                }
-                if (v.size() > 3) {
-                    o.setBookieD_0_odds(parseToDouble(v.get(3)));
-                }
-            } else if (k.equals("1")) {
-                o.setBookieA_1_odds(parseToDouble(v.get(0)));
-                if (v.size() > 1) {
-                    o.setBookieB_1_odds(parseToDouble(v.get(1)));
-                }
-                if (v.size() > 2) {
-                    o.setBookieC_1_odds(parseToDouble(v.get(2)));
-                }
-                if (v.size() > 3) {
-                    o.setBookieD_1_odds(parseToDouble(v.get(3)));
-                }
-            } else {
-                o.setBookieA_2_odds(parseToDouble(v.get(0)));
-                if (v.size() > 1) {
-                    o.setBookieB_2_odds(parseToDouble(v.get(1)));
-                }
-                if (v.size() > 2) {
-                    o.setBookieC_2_odds(parseToDouble(v.get(2)));
-                }
-                if (v.size() > 3) {
-                    o.setBookieD_2_odds(parseToDouble(v.get(3)));
-                }
-            }
-        });
+            });
+        }
         return o;
     }
 
