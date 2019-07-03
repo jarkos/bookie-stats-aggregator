@@ -1,5 +1,6 @@
 package stats;
 
+import lombok.extern.log4j.Log4j2;
 import model.Odds;
 import model.OddsRepository;
 import model.SportEvent;
@@ -11,13 +12,23 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+@Log4j2
 public class StatsAggregator {
 
     private OddsRepository oddsRepository = new OddsRepository();
     private SportEventRepository sportEventsRepository = new SportEventRepository();
 
     public void getStats() {
-        List<Odds> allOds = oddsRepository.getAllOddsLessThanOnePointFiveFive();
+        countSuccessRateForOddsLesThan(1.55);
+        countSuccessRateForOddsLesThan(1.45);
+        countSuccessRateForOddsLesThan(1.35);
+        countSuccessRateForOddsLesThan(1.25);
+        countSuccessRateForOddsLesThan(1.15);
+        countSuccessRateForOddsLesThan(1.05);
+    }
+
+    private void countSuccessRateForOddsLesThan(double oddsLessThanValue) {
+        List<Odds> allOds = oddsRepository.getAllOddsLessThanValue(oddsLessThanValue);
         var allStatisticWithAverageOdds = allOds.stream().map(this::mapToStatistic).collect(Collectors.toList());
         AtomicInteger successfulPredictionResultCount = new AtomicInteger();
         double allStatsSize = allStatisticWithAverageOdds.size();
@@ -33,7 +44,7 @@ public class StatsAggregator {
                 successfulPredictionResultCount.getAndIncrement();
             }
         });
-        System.out.println("Result: " + successfulPredictionResultCount.doubleValue() / allStatsSize);
+        log.info("Result for odds " + oddsLessThanValue + ": " + successfulPredictionResultCount.doubleValue() / allStatsSize);
     }
 
     private Statistic mapToStatistic(Odds o) {
