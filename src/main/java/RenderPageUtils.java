@@ -1,4 +1,3 @@
-import model.ClickAction;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
@@ -9,7 +8,8 @@ import java.time.Duration;
 
 class RenderPageUtils {
 
-    public static final String ODDS = "Kursy";
+    private static final String ODDS = "Kursy";
+    private static final int DAYS_BACK = Integer.parseInt(Main.rb.getString("aggregation.days.back"));
 
     static String renderFullPage(String url, ClickAction action) {
         System.setProperty("webdriver.chrome.driver", "/Repos/BookieStatsAgregator/src/main/resources/libs/chromedriver.exe");
@@ -17,13 +17,18 @@ class RenderPageUtils {
         driver.get(url);
         waitJsRendering(driver);
         if (action != ClickAction.NONE) {
-            driver.findElement(By.className(action.value)).click();
-            try {
-                Thread.sleep(2000);
-                driver.findElement(By.linkText(ODDS)).click();
-                waitJsRendering(driver);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            for (int i = 0; i < DAYS_BACK; i++) {
+                driver.findElement(By.className(action.value)).click();
+                try {
+                    Thread.sleep(2500);
+                    if (i == 0) {
+                        driver.findElement(By.linkText(ODDS)).click();
+                        Thread.sleep(2000);
+                    }
+                    waitJsRendering(driver);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
         try {

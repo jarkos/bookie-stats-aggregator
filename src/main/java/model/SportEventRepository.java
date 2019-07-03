@@ -1,26 +1,12 @@
 package model;
 
 import lombok.extern.log4j.Log4j2;
-import org.hibernate.Session;
 import org.hibernate.Transaction;
-import org.hibernate.cfg.Configuration;
 
 import javax.persistence.PersistenceException;
 
 @Log4j2
-public class SportEventRepository {
-
-    private Session session;
-
-    public SportEventRepository() {
-        createSession();
-    }
-
-    private void createSession() {
-        Configuration config = new Configuration();
-        config.configure("hibernate.cfg.xml");
-        session = config.buildSessionFactory().openSession(); //TODO session close?
-    }
+public class SportEventRepository extends AbstractRepository {
 
     public void saveSportEvents(SportEvent se) {
         Transaction t = session.beginTransaction();
@@ -39,5 +25,11 @@ public class SportEventRepository {
         var query = session.createQuery("from SportEvent WHERE flashScoreEventId = :id").setParameter("id", id);
         return query.list().size() > 0;
     }
+
+    public SportEvent getSportEventByOddsId(int oddsId) {
+        var query = session.createQuery("from SportEvent WHERE odds_id = :oddsId").setParameter("oddsId", oddsId);
+        return (SportEvent) query.uniqueResult();
+    }
+
 
 }

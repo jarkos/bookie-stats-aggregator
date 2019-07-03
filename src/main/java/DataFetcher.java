@@ -1,5 +1,4 @@
 import lombok.extern.log4j.Log4j2;
-import model.ClickAction;
 import model.Odds;
 import model.SportEvent;
 import model.SportEventRepository;
@@ -40,6 +39,8 @@ class DataFetcher {
                         } catch (NumberFormatException nmb) {
                             log.warn("NumberFormatException happened, id: " + id);
                             nmb.printStackTrace();
+                        } catch (MatchCancelledException e) {
+                            log.info("Match with id :" + id + " was canceled");
                         } catch (Exception e) {
                             log.error("Exception on filling event with id: " + id, e);
                         }
@@ -56,7 +57,7 @@ class DataFetcher {
                 .map(r -> r.attributes().get("id").substring(4)).collect(Collectors.toList());
     }
 
-    private SportEvent fillSportEvent(String id, Document match) {
+    private SportEvent fillSportEvent(String id, Document match) throws MatchCancelledException {
         SportEvent se = new SportEvent();
         String league = match.childNode(0).childNode(0).childNodes().stream().filter(e -> e.attr("property")
                 .equals("og:description")).findFirst().get().attr("content"); //TODO get without check
@@ -85,11 +86,13 @@ class DataFetcher {
         return se;
     }
 
-    private void fillResult(Document match, SportEvent se) {
+    private void fillResult(Document match, SportEvent se) throws MatchCancelledException {
         String[] result;
         if (match.getElementsByClass("current-result").text().length() > 7) {
             result = match.getElementsByClass("current-result").text().split(" ")[1]
                     .replace("(", "").replace(")", "").split("-");
+        } else if (match.getElementsByClass("current-result").text().equals("-")) {
+            throw new MatchCancelledException();
         } else {
             result = match.getElementsByClass("current-result").text().split(" ")[0].split("-");
         }
