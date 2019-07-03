@@ -18,6 +18,8 @@ public class SportEvent {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
+    @Enumerated(EnumType.STRING)
+    private EventType type;
     private String flashScoreEventId;
     private String league;
     private Date date;

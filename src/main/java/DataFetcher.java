@@ -1,4 +1,5 @@
 import lombok.extern.log4j.Log4j2;
+import model.EventType;
 import model.Odds;
 import model.SportEvent;
 import model.SportEventRepository;
@@ -22,10 +23,10 @@ class DataFetcher {
     private SportEventRepository sportEventRepository = new SportEventRepository();
 
     void processEventsResultsData(String url) {
-        getEventsResultsAndSave(url);
+        getEventsResultsAndSave(url, EventType.FOOTBALL);
     }
 
-    private void getEventsResultsAndSave(String url) {
+    private void getEventsResultsAndSave(String url, EventType type) {
         String pageContent = RenderPageUtils.renderFullPage(url, ClickAction.TOMORROW);
         Document mainPageYesterday = Jsoup.parse(pageContent);
         List<String> matchesIds = getMatchesFlashscoreIds(mainPageYesterday);
@@ -34,7 +35,7 @@ class DataFetcher {
                         var doc = Jsoup.parse(RenderPageUtils.renderFullPage(Main.rb.getString("website.results.football.odds.url")
                                 .replace("ID_HOLDER", id), ClickAction.NONE));
                         try {
-                            SportEvent sportEvent = fillSportEvent(id, doc);
+                            SportEvent sportEvent = fillSportEvent(id, type, doc);
                             sportEventRepository.saveSportEvents(sportEvent);
                         } catch (NumberFormatException nmb) {
                             log.warn("NumberFormatException happened, id: " + id);
@@ -57,7 +58,7 @@ class DataFetcher {
                 .map(r -> r.attributes().get("id").substring(4)).collect(Collectors.toList());
     }
 
-    private SportEvent fillSportEvent(String id, Document match) throws MatchCancelledException {
+    private SportEvent fillSportEvent(String id, EventType type, Document match) throws MatchCancelledException {
         SportEvent se = new SportEvent();
         String league = match.childNode(0).childNode(0).childNodes().stream().filter(e -> e.attr("property")
                 .equals("og:description")).findFirst().get().attr("content"); //TODO get without check
@@ -76,6 +77,7 @@ class DataFetcher {
             date = Date.from(Instant.ofEpochSecond(timeStampMillis));
         }
         se.setFlashScoreEventId(id);
+        se.setType(type);
         se.setLeague(league);
         se.setDate(date);
         fillResult(match, se);
