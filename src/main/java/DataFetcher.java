@@ -22,17 +22,17 @@ class DataFetcher {
 
     private SportEventRepository sportEventRepository = new SportEventRepository();
 
-    void processEventsResultsData(String url) {
-        getEventsResultsAndSave(url, EventType.FOOTBALL);
+    void processEventsResultsData(String sportMainPageUrl, String oddsResultsTabUrl, EventType type) {
+        getEventsResultsAndSave(sportMainPageUrl, oddsResultsTabUrl, type);
     }
 
-    private void getEventsResultsAndSave(String url, EventType type) {
+    private void getEventsResultsAndSave(String url, String oddsResultsTabUrl, EventType type) {
         String pageContent = RenderPageUtils.renderFullPage(url, ClickAction.TOMORROW);
-        Document mainPageYesterday = Jsoup.parse(pageContent);
-        List<String> matchesIds = getMatchesFlashscoreIds(mainPageYesterday);
+        Document mainPage = Jsoup.parse(pageContent);
+        List<String> matchesIds = getMatchesFlashscoreIds(mainPage);
         matchesIds.forEach(id -> {
                     if (!sportEventRepository.checkEventExist(id)) {
-                        var doc = Jsoup.parse(RenderPageUtils.renderFullPage(Main.rb.getString("website.results.football.odds.url")
+                        var doc = Jsoup.parse(RenderPageUtils.renderFullPage(oddsResultsTabUrl
                                 .replace("ID_HOLDER", id), ClickAction.NONE));
                         try {
                             SportEvent sportEvent = fillSportEvent(id, type, doc);
@@ -83,7 +83,7 @@ class DataFetcher {
         fillResult(match, se);
         se.setFirstTeam(match.getElementsByClass("participant-imglink").get(1).text());
         se.setSecondTeam(match.getElementsByClass("participant-imglink").get(3).text());
-        Odds o = fetchOdds(match);
+        Odds o = fetchOdds(type, match);
         se.setOdds(o);
         return se;
     }
@@ -102,9 +102,18 @@ class DataFetcher {
         se.setSecondTeamResult(Integer.parseInt(result[1]));
     }
 
-    private Odds fetchOdds(Document match) {
+    private Odds fetchOdds(EventType type, Document match) {
         Odds o = new Odds();
         HashMap<String, List<String>> oddsMap = new HashMap<>();
+        if (type == EventType.TENIS) {
+            getTennisOdds(match, o, oddsMap);
+        } else {
+            getFootballOdds(match, o, oddsMap);
+        }
+        return o;
+    }
+
+    private void getFootballOdds(Document match, Odds o, HashMap<String, List<String>> oddsMap) {
         if (match.getElementById("block-1x2-ft") != null) {
             match.getElementById("block-1x2-ft").getElementsByClass("kx").forEach(element -> oddsMap
                     .computeIfAbsent(element.attributes().get("onclick").split("ft_")[1].substring(0, 1), k -> new ArrayList<>()).add(element.text()));
@@ -146,7 +155,40 @@ class DataFetcher {
                 }
             });
         }
-        return o;
+    }
+
+    // TODO refactor && reuse getFootballOdds
+    private void getTennisOdds(Document match, Odds o, HashMap<String, List<String>> oddsMap) {
+        if (match.getElementById("block-moneyline-ft") != null) {
+            match.getElementById("block-moneyline-ft").getElementsByClass("kx").forEach(element -> oddsMap
+                    .computeIfAbsent(element.attributes().get("onclick").split("ft_")[1].substring(0, 1), k -> new ArrayList<>()).add(element.text()));
+
+            oddsMap.forEach((k, v) -> {
+                if (k.equals("1")) {
+                    o.setBookieA_1_odds(parseToDouble(v.get(0)));
+                    if (v.size() > 1) {
+                        o.setBookieB_1_odds(parseToDouble(v.get(1)));
+                    }
+                    if (v.size() > 2) {
+                        o.setBookieC_1_odds(parseToDouble(v.get(2)));
+                    }
+                    if (v.size() > 3) {
+                        o.setBookieD_1_odds(parseToDouble(v.get(3)));
+                    }
+                } else {
+                    o.setBookieA_2_odds(parseToDouble(v.get(0)));
+                    if (v.size() > 1) {
+                        o.setBookieB_2_odds(parseToDouble(v.get(1)));
+                    }
+                    if (v.size() > 2) {
+                        o.setBookieC_2_odds(parseToDouble(v.get(2)));
+                    }
+                    if (v.size() > 3) {
+                        o.setBookieD_2_odds(parseToDouble(v.get(3)));
+                    }
+                }
+            });
+        }
     }
 
     private double parseToDouble(String v) {

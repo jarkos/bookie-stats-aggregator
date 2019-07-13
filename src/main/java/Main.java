@@ -1,3 +1,4 @@
+import model.EventType;
 import stats.StatsAggregator;
 
 import java.time.LocalDate;
@@ -11,9 +12,12 @@ public class Main {
     public static void main(String[] args) {
         if (Boolean.valueOf(rb.getString("aggregation.data.enabled"))) {
             String footballResultsUrl = rb.getString("website.results.football.url");
-            dataFetcher.processEventsResultsData(footballResultsUrl);
+            String tennisResultsUrl = rb.getString("website.results.tennis.url");
+            String matchOddsResultsUrl = Main.rb.getString("website.results.match.odds.url");
+            dataFetcher.processEventsResultsData(footballResultsUrl, matchOddsResultsUrl, EventType.FOOTBALL);
+            dataFetcher.processEventsResultsData(tennisResultsUrl, matchOddsResultsUrl, EventType.TENIS);
         }
-        statsAggregator.getStats();
-        System.out.println("Finished Bookie Fetch for: " + LocalDate.now());
+        statsAggregator.getRoiStats();
+        System.out.println("Finished Bookie stats fetch for: " + LocalDate.now());
     }
 }
