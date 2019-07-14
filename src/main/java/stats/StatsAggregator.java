@@ -5,6 +5,7 @@ import model.*;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -19,6 +20,7 @@ public class StatsAggregator {
     private static final double RANGE = 0.05;
     private static final int SINGLE_AMOUNT_OF_MONEY_PER_BET = 100;
     private static final int MONEY_POT = 1000;
+    private static final double WARN_MARGIN = -180.0;
     private OddsRepository oddsRepository = new OddsRepository();
     private SportEventRepository sportEventsRepository = new SportEventRepository();
     private static ResourceBundle rb = ResourceBundle.getBundle("app");
@@ -71,7 +73,7 @@ public class StatsAggregator {
         var allStatisticsWithAverageOdds = odsWithValueInRange.stream().map(o -> mapToStatistic(o, oddsValue)).collect(Collectors.toList());
         List<Statistic> filteredStats = allStatisticsWithAverageOdds.stream().filter(s -> areOddsInRange(s, oddsValue)).collect(Collectors.toList());
         AtomicInteger successfulPredictionResultCount = new AtomicInteger();
-        double statsSizeForRange = filteredStats.size();
+        int statsSizeForRange = filteredStats.size();
         filteredStats.forEach(stat -> {
             SportEvent se = sportEventsRepository.getSportEventByOddsId(stat.getId());
             boolean check = checkResultCorrectlyPredicted(stat, se);
@@ -79,54 +81,30 @@ public class StatsAggregator {
                 successfulPredictionResultCount.getAndIncrement();
             }
         });
-        prepareRoiForDoubleBet(oddsValue, eventType, successfulPredictionResultCount, statsSizeForRange);
-        prepareRoiResultForSingleBet(oddsValue, successfulPredictionResultCount, statsSizeForRange);
+        log.info("Result for " + eventType.name() + " " + oddsValue + ": " + successfulPredictionResultCount + "/" + statsSizeForRange + " odds ");
+        prepareRoiForAkoBet(oddsValue, successfulPredictionResultCount, statsSizeForRange, 3, "Triple");
+        prepareRoiForAkoBet(oddsValue, successfulPredictionResultCount, statsSizeForRange, 2, "Double");
+        prepareRoiForAkoBet(oddsValue, successfulPredictionResultCount, statsSizeForRange, 1, "Single");
     }
 
-    private void prepareRoiForDoubleBet(double avgOddValue, EventType eventType, AtomicInteger successfulPredictionResultsCount, double statsSizeForRange) {
-        BigDecimal finalRoiDoubleBet;
+    private void prepareRoiForAkoBet(double avgOddValue, AtomicInteger successfulPredictionResultsCount, double statsSizeForRange, int numberOfBetsPerAko, String ID) {
+        BigDecimal finalRoiForMultipleBet;
         var winProbability = successfulPredictionResultsCount.doubleValue() / statsSizeForRange;
-        var possibleWinAmountOfDoubleAkoBet = avgOddValue * avgOddValue * POLISH_TAX_FACTOR * SINGLE_AMOUNT_OF_MONEY_PER_BET;
-        var doubledBetProbability = winProbability * winProbability;
-        var winsRatioForTenDoubleAkoBets = BigDecimal.valueOf(doubledBetProbability).setScale(2, RoundingMode.DOWN).multiply(BigDecimal.valueOf((10)));
-        var winValueForTenDoubleAkoBets = winsRatioForTenDoubleAkoBets.multiply(BigDecimal.valueOf(possibleWinAmountOfDoubleAkoBet));
-        if (winValueForTenDoubleAkoBets.compareTo(BigDecimal.ZERO) >= 0) {
-            finalRoiDoubleBet = winValueForTenDoubleAkoBets.subtract(BigDecimal.valueOf(MONEY_POT));
+        var possibleWinAmountOfAkoBet = Math.pow(avgOddValue, numberOfBetsPerAko) * POLISH_TAX_FACTOR * SINGLE_AMOUNT_OF_MONEY_PER_BET;
+        var akoBetProbability = Math.pow(winProbability, numberOfBetsPerAko);
+        var winsRatioForTenAkoBets = BigDecimal.valueOf(akoBetProbability).setScale(2, RoundingMode.DOWN).multiply(BigDecimal.valueOf((10)));
+        var winValueForTenAkoBets = winsRatioForTenAkoBets.multiply(BigDecimal.valueOf(possibleWinAmountOfAkoBet));
+        if (winValueForTenAkoBets.compareTo(BigDecimal.ZERO) >= 0) {
+            finalRoiForMultipleBet = winValueForTenAkoBets.subtract(BigDecimal.valueOf(MONEY_POT));
         } else {
-            finalRoiDoubleBet = winValueForTenDoubleAkoBets.add(BigDecimal.valueOf(MONEY_POT));
+            finalRoiForMultipleBet = winValueForTenAkoBets.add(BigDecimal.valueOf(MONEY_POT));
         }
-
-        log.info("Result for " + successfulPredictionResultsCount + "/" + statsSizeForRange + " odds " + eventType.name() + " "
-                + avgOddValue + ": " + winProbability + " | Doubled: " + doubledBetProbability +
-                " WinPerBet100PLN: " + possibleWinAmountOfDoubleAkoBet);
-
-        if (finalRoiDoubleBet.doubleValue() < -200.0) {
-            log.info("Double bet ROI: " + finalRoiDoubleBet);
+        DecimalFormat formatter = new DecimalFormat("#0.00");
+        if (finalRoiForMultipleBet.doubleValue() < WARN_MARGIN) {
+            log.info(ID + " " + formatter.format(akoBetProbability) + " ROI: " + formatter.format(finalRoiForMultipleBet)); //rounding missing in print
         } else {
-            log.warn("Double bet ROI: " + finalRoiDoubleBet);
+            log.warn(ID + " " + formatter.format(akoBetProbability) + " ROI: " + formatter.format(finalRoiForMultipleBet)); //rounding missing in print
         }
-    }
-
-    //TODO refactor with doubleRoi
-    private void prepareRoiResultForSingleBet(double oddsValue, AtomicInteger successfulPredictionResultCount, double statsSizeForRange) {
-        BigDecimal finalRoiSingleBet;
-        var possibilityWin = successfulPredictionResultCount.doubleValue() / statsSizeForRange;
-        var winningBetAmountOfSingleBet = oddsValue * POLISH_TAX_FACTOR * SINGLE_AMOUNT_OF_MONEY_PER_BET;
-        var possiblyWinForOneBet = (BigDecimal.valueOf(possibilityWin).setScale(2, RoundingMode.DOWN).multiply(BigDecimal.valueOf((10))));
-        var winValueForOneBet = possiblyWinForOneBet.multiply(BigDecimal.valueOf(winningBetAmountOfSingleBet));
-
-        if (winValueForOneBet.compareTo(BigDecimal.ZERO) >= 0) {
-            finalRoiSingleBet = winValueForOneBet.subtract(BigDecimal.valueOf(MONEY_POT));
-        } else {
-            finalRoiSingleBet = winValueForOneBet.add(BigDecimal.valueOf(MONEY_POT));
-        }
-
-        if (finalRoiSingleBet.doubleValue() < -200.0) {
-            log.info("Single bet ROI: " + finalRoiSingleBet);
-        } else {
-            log.warn("Single bet ROI: " + finalRoiSingleBet);
-        }
-
     }
 
     private boolean areOddsInRange(Statistic statistic, double oddsLessThanValue) {
