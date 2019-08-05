@@ -1,6 +1,6 @@
 public enum ClickAction {
 
-    TOMORROW("calendar__nav"),
+    TOMORROW("calendar__direction--yesterday"),
     NONE("none"),
     ;
     public final String value;

@@ -18,8 +18,9 @@ class RenderPageUtils {
         waitJsRendering(driver);
         if (action != ClickAction.NONE) {
             for (int i = 0; i < DAYS_BACK; i++) {
-                driver.findElement(By.className(action.value)).click();
                 try {
+                    Thread.sleep(1000);
+                    driver.findElement(By.className(action.value)).click();
                     Thread.sleep(2500);
                     if (i == 0) {
                         driver.findElement(By.linkText(ODDS)).click();

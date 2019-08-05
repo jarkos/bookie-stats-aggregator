@@ -103,17 +103,17 @@ class DataFetcher {
     }
 
     private Odds fetchOdds(EventType type, Document match) {
-        Odds o = new Odds();
-        HashMap<String, List<String>> oddsMap = new HashMap<>();
-        if (type == EventType.TENIS) {
-            getTennisOdds(match, o, oddsMap);
+        Odds odds = new Odds();
+        if (type != EventType.FOOTBALL) {
+            getTwoWayOdds(match, odds, type);
         } else {
-            getFootballOdds(match, o, oddsMap);
+            getFootballOdds(match, odds);
         }
-        return o;
+        return odds;
     }
 
-    private void getFootballOdds(Document match, Odds o, HashMap<String, List<String>> oddsMap) {
+    private void getFootballOdds(Document match, Odds o) {
+        HashMap<String, List<String>> oddsMap = new HashMap<>();
         if (match.getElementById("block-1x2-ft") != null) {
             match.getElementById("block-1x2-ft").getElementsByClass("kx").forEach(element -> oddsMap
                     .computeIfAbsent(element.attributes().get("onclick").split("ft_")[1].substring(0, 1), k -> new ArrayList<>()).add(element.text()));
@@ -158,11 +158,12 @@ class DataFetcher {
     }
 
     // TODO refactor && reuse getFootballOdds
-    private void getTennisOdds(Document match, Odds o, HashMap<String, List<String>> oddsMap) {
-        if (match.getElementById("block-moneyline-ft") != null) {
-            match.getElementById("block-moneyline-ft").getElementsByClass("kx").forEach(element -> oddsMap
-                    .computeIfAbsent(element.attributes().get("onclick").split("ft_")[1].substring(0, 1), k -> new ArrayList<>()).add(element.text()));
-
+    private void getTwoWayOdds(Document match, Odds o, EventType type) {
+        HashMap<String, List<String>> oddsMap = new HashMap<>();
+        if (match.getElementById(type.resultBlockId) != null) {
+            match.getElementById(type.resultBlockId).getElementsByClass("kx").forEach(element ->
+                    oddsMap.computeIfAbsent(element.attributes().get("onclick").split(type.splitResultBlockString)[1]
+                            .substring(0, 1), k -> new ArrayList<>()).add(element.text()));
             oddsMap.forEach((k, v) -> {
                 if (k.equals("1")) {
                     o.setBookieA_1_odds(parseToDouble(v.get(0)));

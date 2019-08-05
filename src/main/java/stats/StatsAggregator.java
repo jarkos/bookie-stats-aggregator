@@ -6,10 +6,7 @@ import model.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ResourceBundle;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -20,7 +17,7 @@ public class StatsAggregator {
     private static final double RANGE = 0.05;
     private static final int SINGLE_AMOUNT_OF_MONEY_PER_BET = 100;
     private static final int MONEY_POT = 1000;
-    private static final double WARN_MARGIN = -180.0;
+    private static final double WARN_MARGIN = -120.0;
     private OddsRepository oddsRepository = new OddsRepository();
     private SportEventRepository sportEventsRepository = new SportEventRepository();
     private static ResourceBundle rb = ResourceBundle.getBundle("app");
@@ -65,6 +62,22 @@ public class StatsAggregator {
         countRoiForOddsInRange(1.25, EventType.FOOTBALL);
         countRoiForOddsInRange(1.15, EventType.FOOTBALL);
         countRoiForOddsInRange(1.05, EventType.FOOTBALL);
+
+        countRoiForOddsInRange(2.35, EventType.BASKETBALL);
+        countRoiForOddsInRange(2.25, EventType.BASKETBALL);
+        countRoiForOddsInRange(2.15, EventType.BASKETBALL);
+        countRoiForOddsInRange(2.05, EventType.BASKETBALL);
+        countRoiForOddsInRange(1.95, EventType.BASKETBALL);
+        countRoiForOddsInRange(1.85, EventType.BASKETBALL);
+        countRoiForOddsInRange(1.75, EventType.BASKETBALL);
+        countRoiForOddsInRange(1.65, EventType.BASKETBALL);
+        countRoiForOddsInRange(1.55, EventType.BASKETBALL);
+        countRoiForOddsInRange(1.45, EventType.BASKETBALL);
+        countRoiForOddsInRange(1.35, EventType.BASKETBALL);
+        countRoiForOddsInRange(1.30, EventType.BASKETBALL);
+        countRoiForOddsInRange(1.25, EventType.BASKETBALL);
+        countRoiForOddsInRange(1.15, EventType.BASKETBALL);
+        countRoiForOddsInRange(1.05, EventType.BASKETBALL);
     }
 
     private void countRoiForOddsInRange(double oddsValue, EventType eventType) {
@@ -72,19 +85,61 @@ public class StatsAggregator {
         List<Odds> odsWithValueInRange = oddsRepository.getAllOddsByIds(idsOdsInRange);
         var allStatisticsWithAverageOdds = odsWithValueInRange.stream().map(o -> mapToStatistic(o, oddsValue)).collect(Collectors.toList());
         List<Statistic> filteredStats = allStatisticsWithAverageOdds.stream().filter(s -> areOddsInRange(s, oddsValue)).collect(Collectors.toList());
-        AtomicInteger successfulPredictionResultCount = new AtomicInteger();
+        final AtomicInteger successfulPredictionResultCount = new AtomicInteger();
         int statsSizeForRange = filteredStats.size();
+        HashMap<String, Double> favoriteWinPerGameTypeMap = new HashMap<>();
+        HashMap<String, Double> favoriteLosePerGameTypeMap = new HashMap<>();
         filteredStats.forEach(stat -> {
             SportEvent se = sportEventsRepository.getSportEventByOddsId(stat.getId());
             boolean check = checkResultCorrectlyPredicted(stat, se);
             if (check) {
-                successfulPredictionResultCount.getAndIncrement();
+                if (eventType.equals(EventType.FOOTBALL) && ((stat.getAverageOdds1() >= 1.90 && stat.getAverageOdds1() <= 2.40)
+                        || (stat.getAverageOdds2() > 1.90 && stat.getAverageOdds2() <= 2.40))) {
+                    incrementGameTypeCounterMapForEvent(favoriteWinPerGameTypeMap, se);
+                }
+                successfulPredictionResultCount.incrementAndGet();
+            } else {
+                if (eventType.equals(EventType.FOOTBALL) && ((stat.getAverageOdds1() >= 1.90 && stat.getAverageOdds1() <= 2.40)
+                        || (stat.getAverageOdds2() > 1.90 && stat.getAverageOdds2() <= 2.40))) {
+                    incrementGameTypeCounterMapForEvent(favoriteLosePerGameTypeMap, se);
+                }
             }
         });
-        log.info("Result for " + eventType.name() + " " + oddsValue + ": " + successfulPredictionResultCount + "/" + statsSizeForRange + " odds ");
+        log.error("Result for " + eventType.name() + " " + oddsValue + ": " + successfulPredictionResultCount + "/" + statsSizeForRange + " odds ");
+        prepareRoiForAkoBet(oddsValue, successfulPredictionResultCount, statsSizeForRange, 5, "Five");
+        prepareRoiForAkoBet(oddsValue, successfulPredictionResultCount, statsSizeForRange, 4, "Fourfold");
         prepareRoiForAkoBet(oddsValue, successfulPredictionResultCount, statsSizeForRange, 3, "Triple");
         prepareRoiForAkoBet(oddsValue, successfulPredictionResultCount, statsSizeForRange, 2, "Double");
         prepareRoiForAkoBet(oddsValue, successfulPredictionResultCount, statsSizeForRange, 1, "Single");
+        printLeaguesRoiForHighBetRatioFavoriteWins(oddsValue, favoriteWinPerGameTypeMap, favoriteLosePerGameTypeMap);
+    }
+
+    private void printLeaguesRoiForHighBetRatioFavoriteWins(double oddsValue, HashMap<String, Double> favoriteWinPerGameTypeMap, HashMap<String, Double> favoriteLosePerGameTypeMap) {
+        Map<String, Double> sortedFavoriteWinPerGameTypeMap = new LinkedHashMap<>();
+        favoriteWinPerGameTypeMap.entrySet().stream().sorted(
+                Map.Entry.comparingByValue()).forEachOrdered(
+                c -> sortedFavoriteWinPerGameTypeMap.put(c.getKey(), c.getValue()));
+        if (sortedFavoriteWinPerGameTypeMap.keySet().size() != 0) {
+            sortedFavoriteWinPerGameTypeMap.forEach((k, v) -> {
+                if (favoriteLosePerGameTypeMap.get(k) != null && favoriteLosePerGameTypeMap.get(k) > 2) {
+                    var gameStatSize = favoriteLosePerGameTypeMap.get(k) + v;
+                    log.info(k + " ## " + v + " %% " + (v / gameStatSize) * 100);
+                    prepareRoiForAkoBet(oddsValue, new AtomicInteger(Integer.valueOf(v.intValue())), gameStatSize, 1, "Single " + k);
+                    prepareRoiForAkoBet(oddsValue, new AtomicInteger(Integer.valueOf(v.intValue())), gameStatSize, 2, "Double " + k);
+                    prepareRoiForAkoBet(oddsValue, new AtomicInteger(Integer.valueOf(v.intValue())), gameStatSize, 3, "Triple " + k);
+                }
+            });
+        }
+    }
+
+    private void incrementGameTypeCounterMapForEvent(HashMap<String, Double> perGameTypeMap, SportEvent se) {
+        Double count = perGameTypeMap.get(se.getLeague());
+        if (count == null) {
+            count = 1.0;
+        } else {
+            count++;
+        }
+        perGameTypeMap.put(se.getLeague().split("-")[0], count);
     }
 
     private void prepareRoiForAkoBet(double avgOddValue, AtomicInteger successfulPredictionResultsCount, double statsSizeForRange, int numberOfBetsPerAko, String ID) {
@@ -109,10 +164,11 @@ public class StatsAggregator {
 
     private boolean areOddsInRange(Statistic statistic, double oddsLessThanValue) {
         var loweRange = oddsLessThanValue - RANGE;
+        var higherRange = oddsLessThanValue + RANGE;
         if (statistic.getAverageOdds1() != 0.0) {
-            return statistic.getAverageOdds1() >= loweRange;
+            return statistic.getAverageOdds1() >= loweRange && statistic.getAverageOdds1() <= higherRange;
         } else {
-            return statistic.getAverageOdds2() >= loweRange;
+            return statistic.getAverageOdds2() >= loweRange && statistic.getAverageOdds2() <= higherRange;
         }
     }
 
