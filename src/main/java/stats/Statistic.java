@@ -3,7 +3,7 @@ package stats;
 import lombok.Data;
 
 @Data
-public class Statistic {
+class Statistic {
     private int id;
     private double averageOdds1;
     private double averageOdds2;

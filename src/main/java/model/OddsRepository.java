@@ -38,8 +38,8 @@ public class OddsRepository extends AbstractRepository {
                 "OR (o.bookieD_1_odds <= :higherRange AND o.bookieD_1_odds > 0 AND o.bookieA_1_odds >= :lowerRange) " +
                 "OR (o.bookieD_2_odds <= :higherRange AND o.bookieD_2_odds > 0 AND o.bookieA_2_odds >= :lowerRange))";
 
-        Query query = session.createQuery(hql, Integer.class).setParameter("lowerRange", lowerRange).setParameter("higherRange", higherRange)
-                .setParameter("type", type);
+        Query query = session.createQuery(hql, Integer.class).setParameter("lowerRange", lowerRange)
+                .setParameter("higherRange", higherRange).setParameter("type", type);
         return query.list();
     }
 

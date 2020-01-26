@@ -14,7 +14,7 @@ abstract class AbstractRepository {
     private void createSession() {
         Configuration config = new Configuration();
         config.configure("hibernate.cfg.xml");
-        session = config.buildSessionFactory().openSession(); //TODO session close?
+        session = config.buildSessionFactory().openSession(); //TODO session close management
     }
 
 }

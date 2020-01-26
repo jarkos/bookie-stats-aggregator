@@ -12,6 +12,7 @@ class RenderPageUtils {
     private static final int DAYS_BACK = Integer.parseInt(Main.rb.getString("aggregation.days.back"));
 
     static String renderFullPage(String url, ClickAction action) {
+        //TODO configurable by config
         System.setProperty("webdriver.chrome.driver", "/Repos/BookieStatsAgregator/src/main/resources/libs/chromedriver.exe");
         WebDriver driver = new ChromeDriver();
         driver.get(url);
@@ -19,7 +20,7 @@ class RenderPageUtils {
         if (action != ClickAction.NONE) {
             for (int i = 0; i < DAYS_BACK; i++) {
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(1000); // TODO blee
                     driver.findElement(By.className(action.value)).click();
                     Thread.sleep(2500);
                     if (i == 0) {
@@ -33,7 +34,7 @@ class RenderPageUtils {
             }
         }
         try {
-            Thread.sleep(2000);
+            Thread.sleep(2000); //TODO blee
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

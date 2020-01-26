@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 @Log4j2
 public class StatsAggregator {
 
+    //TODO configurable by config
     private static final double POLISH_TAX_FACTOR = 0.88;
     private static final double RANGE = 0.05;
     private static final int SINGLE_AMOUNT_OF_MONEY_PER_BET = 100;
@@ -23,6 +24,7 @@ public class StatsAggregator {
     private static ResourceBundle rb = ResourceBundle.getBundle("app");
 
     public void getRoiStats() {
+        //TODO use for/streams
         countRoiForOddsInRange(2.55, EventType.TENIS);
         countRoiForOddsInRange(2.45, EventType.TENIS);
         countRoiForOddsInRange(2.35, EventType.TENIS);
@@ -124,9 +126,9 @@ public class StatsAggregator {
                 if (favoriteLosePerGameTypeMap.get(k) != null && favoriteLosePerGameTypeMap.get(k) > 2) {
                     var gameStatSize = favoriteLosePerGameTypeMap.get(k) + v;
                     log.info(k + " ## " + v + " %% " + (v / gameStatSize) * 100);
-                    prepareRoiForAkoBet(oddsValue, new AtomicInteger(Integer.valueOf(v.intValue())), gameStatSize, 1, "Single " + k);
-                    prepareRoiForAkoBet(oddsValue, new AtomicInteger(Integer.valueOf(v.intValue())), gameStatSize, 2, "Double " + k);
-                    prepareRoiForAkoBet(oddsValue, new AtomicInteger(Integer.valueOf(v.intValue())), gameStatSize, 3, "Triple " + k);
+                    prepareRoiForAkoBet(oddsValue, new AtomicInteger(v.intValue()), gameStatSize, 1, "Single " + k);
+                    prepareRoiForAkoBet(oddsValue, new AtomicInteger(v.intValue()), gameStatSize, 2, "Double " + k);
+                    prepareRoiForAkoBet(oddsValue, new AtomicInteger(v.intValue()), gameStatSize, 3, "Triple " + k);
                 }
             });
         }
@@ -182,6 +184,7 @@ public class StatsAggregator {
         return check;
     }
 
+    //TODO exclude
     private Statistic mapToStatistic(Odds o, double oddsValue) {
         HashMap<String, List<Double>> oddsMap = new HashMap<>();
         oddsMap.put("1", new ArrayList<>());
